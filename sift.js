@@ -57,8 +57,7 @@ var sift = (function() {
         /** USB/HID Scales */
             {name: 'Mettler Toledo', class: 'scale', vendor: '0x0EB8', product: '0xF000', device: '0x00', endpoint: '0x81'},
             {name: 'Dymo', class: 'scale', vendor: '0x0922', product: '0x8009', device: '0x00', endpoint: '0x82'},
-            /** TODO - Confirm Stamps info **/
-            {name: 'Stamps.com', class: 'scale', vendor: '0x1446', product: '0xF000', device: '0x00', endpoint: '0x81'},
+            {name: 'Stamps.com', class: 'scale', vendor: '0x1446', product: '0x6A73', device: '0x00', endpoint: '0x81'},
 
         ],
 
