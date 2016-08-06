@@ -9,6 +9,8 @@
 
 var sift = (function() {
 
+    var DEBUG = false;
+
     var _sift = {
 
         ///// PRIVATE DATA MAPPING /////
@@ -48,7 +50,7 @@ var sift = (function() {
             {name: 'EPSON TM', os: 'windows', type: 'both', physical: true},
 
         /** Mac Raw-Only Printers */
-            {name: '', os: 'mac', type: 'raw', physical: true},
+         //   {name: 'FIXME', os: 'mac', type: 'raw', physical: true},
 
         ],
 
@@ -141,27 +143,122 @@ var sift = (function() {
     };
 
     ///// SIFTER CLASS ////
-    function Sifter(options) {
-        // TODO: Implement and document Sifter class
+    // TODO: jsDocs for the Sifter class
+    function Sifter(type, options) {
+        var KEEP_KEY = '_sift_keep';
 
-        ///// PRINTERS /////
+        this.sift = function(data) {
+            if (!options.keep && !options.toss) {
+                console.warn("Invalid sift.  Must be { keep|toss: {...}}");
+                return data;
+            }
 
-        // KEEP
-        //      { keep : { driver: 'partial driver name match', os: 'User Agent String', type: 'pixel|raw|both', physical: true|false} }
+            var sifted = data;
+            var params = options.keep || options.toss;
+            var keepFlag = options.keep ? true : false;
 
-        // TOSS
-        //      { toss : { driver: 'partial driver name match', os: 'User Agent String', type: 'pixel|raw|both', physical: true|false} }
+            if (DEBUG) {
+                console.log("Options provided:");
+                console.log(options);
+                console.log("Original data:");
+                console.log(data);
+            }
 
+            var debug = function(item, rule) {
+                if (DEBUG) {
+                    console.log("Marking as " + (keepFlag ? "keep:" : "toss:"));
+                    console.log(item);
+                    console.log("matching:");
+                    console.log(rule);
+                }
+            }
 
+            var osDetected;
+            if (params.os) {
+                var appVersion = '';
 
-        ///// USB/HID /////
+                if (typeof(params.os) === 'string') appVersion = params.os;
+                else if (typeof(window.navigator) !== 'undefined') appVersion = window.navigator.appVersion;
+                else console.warn("Sifter cannot determine os; os filtering disabled");
 
+                if (appVersion('Mac')!=-1) osDetected = 'mac';
+                else if (appVersion.indexOf('X11')!=-1) osDetected = 'linux';
+                else if (appVersion.indexOf('Linux')!=-1) osDetected = 'linux';
+                else osDetected = 'windows';
+            }
 
-        // KEEP
-        //      { keep : {name: 'partial device name match', class: 'scale' }
+            ///// PRINTERS /////
+            if (type == 'PRINT') {
+                for (var i = 0; i < _sift.printDrivers.length; i++) {
+                    for (var j = 0; j < sifted.length; j++) {
+                        // Determine if the driver name matches
+                        var driverMatch = sifted[j].driver && sifted[j].driver.toLowerCase().indexOf(_sift.printDrivers[i].name.toLowerCase()) !== -1;
 
-        // TOSS
-        ///     { toss : {name: 'partial device name match', class: 'scale' }
+                        // Toss or keep virtual/file printers (physical: true|false)
+                        if (params.physical !== undefined) {
+                            // if keep && physical or toss && virtual
+                            if (params.physical == keepFlag) {
+                                if (driverMatch) {
+                                    sifted[j][KEEP_KEY] = false; // Mark virtual printers for removal
+                                    debug(sifted[j], _sift.printDrivers[i]);
+                                }
+                            } else {
+                                if (!driverMatch) {
+                                    sifted[j][KEEP_KEY] = false; // Mark physical printers for removal
+                                    debug(sifted[j], _sift.printDrivers[i]);
+                                }
+                            }
+                        }
+
+                        // Toss or keep raw/pixel printers (type: 'pixel'|'raw'|'both')
+                        if (params.type !== undefined) {
+                            params.type = params.type.toLowerCase();
+                            var typeMatch = driverMatch && (_sift.printDrivers[i] == params.type || _sift.printDrivers[i] == 'both');
+
+                            if (typeMatch == !keepFlag) {
+                                sifted[j][KEEP_KEY] = false;
+                                debug(sifted[j], _sift.printDrivers[i]);
+                            }
+                        }
+
+                        // Enforce strict os matching based on windows.navigator or provided User Agent String
+                        if (osDetected) {
+                            var osMatch = driverMatch && (_sift.printDrivers[i].os === osDetected);
+                            if (osMatch == !keepFlag) {
+                                sifted[j][KEEP_KEY] = false;
+                                debug(sifted[j], _sift.printDrivers[i]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            ///// USB/HID /////
+            if (type == 'USB') {
+                for (var i = 0; i < _sift.usbVendors; i++) {
+                    for (var j = 0; j < sifted.length; j++) {
+                        // TODO Filter for hardware type (scales) and partial vendor name matching
+                        throw "USB filtering not implemented";
+                    }
+                }
+            }
+
+            // Process results
+            for (var i = 0; i < sifted.length; i++) {
+                if (sifted[i][KEEP_KEY] === false) {
+                    sifted.splice(i, 1);
+                    delete sifted[i][KEEP_KEY];
+                }
+            }
+
+            if (DEBUG) {
+                console.log("Sifted data:");
+                console.log(sifted);
+            }
+
+            return sifted;
+
+        }
     }
 
     ///// PUBLIC METHODS /////
@@ -180,15 +277,20 @@ var sift = (function() {
          * @param {Object} [keep] Filter options
          *  @param {Sifter|Array<Sifter>}
          * @returns {Array<Object>}
+         * TODO: Finish documentation
          *
          * @memberof sift.printers
          */
         printers: function(all, options) {
-            // TODO
+            return new Sifter('PRINT', options).sift(all);
         },
 
         usb: function(all, options) {
-            // TODO
+            return new Sifter('USB', options).sift(all);
+        },
+
+        setDebug: function(debug) {
+            DEBUG = debug;
         }
     }
 
