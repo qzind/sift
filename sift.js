@@ -41,6 +41,7 @@ var sift = (function() {
             {name: 'docPrint PDF', os: 'windows', type: 'pixel', physical: false},
             {name: 'EmfPrinter', os: 'windows', type: 'pixel', physical: false},
             {name: 'ColorPlus', os: 'windows', type: 'pixel', physical: false},
+            {name: 'ImageRight', os: 'windows', type: 'pixel', physical: false},
 
         /** Windows Raw-Only Printers **/
             {name: 'Generic / Text Only', os: 'windows', type: 'raw', physical: true},
@@ -166,9 +167,9 @@ var sift = (function() {
 
             var debug = function(item, rule) {
                 if (DEBUG) {
-                    console.log("Marking as " + (keepFlag ? "keep:" : "toss:"));
+                    console.log("Marking " + type.toLowerCase() + " as " + (keepFlag ? "keep:" : "toss:"));
                     console.log(item);
-                    console.log("matching:");
+                    console.log("matching data:");
                     console.log(rule);
                 }
             }
@@ -210,6 +211,7 @@ var sift = (function() {
                             }
                         }
 
+                        // FIXME This appears to be broken
                         // Toss or keep raw/pixel printers (type: 'pixel'|'raw'|'both')
                         if (params.type !== undefined) {
                             params.type = params.type.toLowerCase();
@@ -244,10 +246,11 @@ var sift = (function() {
             }
 
             // Process results
-            for (var i = 0; i < sifted.length; i++) {
-                if (sifted[i][KEEP_KEY] === false) {
+            for (var i = sifted.length -1; i >= 0 ; i--) {
+                var keep = sifted[i][KEEP_KEY]; // cache flag and remove it
+                delete sifted[i][KEEP_KEY];
+                if (keep === false) {
                     sifted.splice(i, 1);
-                    delete sifted[i][KEEP_KEY];
                 }
             }
 
@@ -298,10 +301,10 @@ var sift = (function() {
 
 (function() {
     if (typeof define === 'function' && define.amd) {
-        define(qz);
+        define(sift);
     } else if (typeof exports === 'object') {
-        module.exports = qz;
+        module.exports = sift;
     } else {
-        window.qz = qz;
+        window.sift = sift;
     }
 })();
