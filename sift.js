@@ -86,7 +86,7 @@ var sift = (function() {
             };
 
             // Filter erroneous data
-            if (data.length < 4 || data.slice(2, 8).join('') == "000000000000") {
+            if (data.length < 4 || data.slice(2, 8).join('') === '000000000000') {
                 return weight;
             }
 
@@ -172,7 +172,7 @@ var sift = (function() {
                     console.log("matching data:");
                     console.log(rule);
                 }
-            }
+            };
 
             var osDetected;
             if (params.os) {
@@ -190,6 +190,7 @@ var sift = (function() {
 
             ///// PRINTERS /////
             if (type == 'PRINT') {
+                // FIXME - This logic is broken.  We need loop through and mark all non-virtuals as physicals an all non-raw as pixel
                 for (var i = 0; i < _sift.printDrivers.length; i++) {
                     for (var j = 0; j < sifted.length; j++) {
                         // Determine if the driver name matches
@@ -198,7 +199,7 @@ var sift = (function() {
                         // Toss or keep virtual/file printers (physical: true|false)
                         if (params.physical !== undefined) {
                             // if keep && physical or toss && virtual
-                            if (params.physical == keepFlag) {
+                            if (params.physical === keepFlag) {
                                 if (driverMatch) {
                                     sifted[j][KEEP_KEY] = false; // Mark virtual printers for removal
                                     debug(sifted[j], _sift.printDrivers[i]);
@@ -215,9 +216,13 @@ var sift = (function() {
                         // Toss or keep raw/pixel printers (type: 'pixel'|'raw'|'both')
                         if (params.type !== undefined) {
                             params.type = params.type.toLowerCase();
-                            var typeMatch = driverMatch && (_sift.printDrivers[i] == params.type || _sift.printDrivers[i] == 'both');
+                            var typeMatch = driverMatch && (_sift.printDrivers[i].type === params.type || _sift.printDrivers[i].type === 'both');
 
-                            if (typeMatch == !keepFlag) {
+                            if (typeMatch) {
+                                console.log(sifted[j].name + " " + _sift.printDrivers[i].type + " matches " + params.type);
+                            }
+
+                            if (typeMatch === !keepFlag) {
                                 sifted[j][KEEP_KEY] = false;
                                 debug(sifted[j], _sift.printDrivers[i]);
                             }
@@ -226,7 +231,7 @@ var sift = (function() {
                         // Enforce strict os matching based on windows.navigator or provided User Agent String
                         if (osDetected) {
                             var osMatch = driverMatch && (_sift.printDrivers[i].os === osDetected);
-                            if (osMatch == !keepFlag) {
+                            if (osMatch === !keepFlag) {
                                 sifted[j][KEEP_KEY] = false;
                                 debug(sifted[j], _sift.printDrivers[i]);
                             }
@@ -236,7 +241,7 @@ var sift = (function() {
             }
 
             ///// USB/HID /////
-            if (type == 'USB') {
+            if (type === 'USB') {
                 for (var i = 0; i < _sift.usbVendors; i++) {
                     for (var j = 0; j < sifted.length; j++) {
                         // TODO Filter for hardware type (scales) and partial vendor name matching
