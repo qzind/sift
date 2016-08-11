@@ -24,6 +24,9 @@ var sift = (function() {
 
         /** Linux File Printers */
             {name: 'PDF.ppd', os: 'linux', type: 'pixel', physical: false},
+            {name: 'Zebra-EPL1-Label.ppd', os: 'linux', type: 'both', physical: true},
+            {name: 'Zebra-EPL2-Label.ppd', os: 'linux', type: 'both', physical: true},
+            {name: 'Zebra-ZPL-Label.ppd', os: 'linux', type: 'both', physical: true},
 
         /** Windows File Printers */
             {name: 'Microsoft XPS Document Writer', os: 'windows', type: 'pixel', physical: false},
