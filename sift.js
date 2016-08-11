@@ -7,78 +7,193 @@
  * A JavaScript helper which filters hardware data for locally attached computer hardware.
  */
 
-var sift = (function() {
+var Sifter = (function() {
 
-    var DEBUG = false;
+    ///// PRIVATE DATA MAPPING /////
+
+    //printer driver mapping
+    function _Driver(name, os, type, physical) {
+        //properties will be visible, but uneditable
+        function _prop(val) { return { value: val, enumerable: true }; }
+
+        Object.defineProperties(this, {
+            "name": _prop(name),
+            "os": _prop(os),
+            "type": _prop(type),
+            "physical": _prop(physical)
+        });
+    }
+
+    //printer filter properties (NOTE: uses single bit values so .keep() filters can just be flipped)
+    var _Types = {}, _OS = {};
+    Object.defineProperties(_Types, {
+        "PIXEL": { value: 1 },
+        "RAW": { value: 2 },
+        "BOTH": { value: 4 }
+    });
+    Object.defineProperties(_OS, {
+        "MAC": { value: 1 },
+        "LINUX": { value: 2 },
+        "WINDOWS": { value: 4 }
+    });
+
+    //usb device mapping
+    function _Vendor(name, type, vendor, product, device, endpoint) {
+        //properties will be visible, but uneditable
+        function _prop(val) { return { value: val, enumerable: true }; }
+
+        Object.defineProperties(this, {
+            "name": _prop(name),
+            "type": _prop(type),
+            "vendor": _prop(vendor),
+            "product": _prop(product),
+            "device": _prop(device),
+            "endpoint": _prop(endpoint)
+        });
+    }
 
     var _sift = {
 
-        ///// PRIVATE DATA MAPPING /////
-
         printDrivers: [
+            new _Driver('UNKNOWN', null, _Types.PIXEL, true),
 
-        /** Mac File Printers */
-            {name: 'PDFwriter.ppd', os: 'mac', type: 'pixel', physical: false},
-            {name: 'Print_to_VipRiser.ppd', os: 'mac', type: 'pixel', physical: false},
-            {name: 'Virtual_PDF_Printer.ppd', os: 'mac', type: 'pixel', physical: false},
+            /** Mac File Printers */
+            new _Driver('PDFwriter.ppd', _OS.MAC, _Types.PIXEL, false),
+            new _Driver('Print_to_VipRiser.ppd', _OS.MAC, _Types.PIXEL, false),
+            new _Driver('Virtual_PDF_Printer.ppd', _OS.MAC, _Types.PIXEL, false),
 
-        /** Linux File Printers */
-            {name: 'PDF.ppd', os: 'linux', type: 'pixel', physical: false},
+            /** Linux File Printers */
+            new _Driver('PDF.ppd', _OS.LINUX, _Types.PIXEL, false),
 
-        /** Windows File Printers */
-            {name: 'Microsoft XPS Document Writer', os: 'windows', type: 'pixel', physical: false},
-            {name: 'Microsoft Print To PDF', os: 'windows', type: 'pixel', physical: false},
-            {name: 'Send to Microsoft OneNote', os: 'windows', type: 'pixel', physical: false},
-            {name: 'PDFCreator', os: 'windows', type: 'pixel', physical: false},
-            {name: 'PrimoPDF', os: 'windows', type: 'pixel', physical: false},
-            {name: 'CutePDFWriter', os: 'windows', type: 'pixel', physical: false},
-            {name: 'Bullzip PDF', os: 'windows', type: 'pixel', physical: false},
-            {name: 'Adobe PDF', os: 'windows', type: 'pixel', physical: false},
-            {name: 'doPDF', os: 'windows', type: 'pixel', physical: false},
-            {name: 'novaPDF', os: 'windows', type: 'pixel', physical: false},
-            {name: 'OPTIsend', os: 'windows', type: 'pixel', physical: false},
-            {name: 'pdf995', os: 'windows', type: 'pixel', physical: false},
-            {name: 'docPrint PDF', os: 'windows', type: 'pixel', physical: false},
-            {name: 'EmfPrinter', os: 'windows', type: 'pixel', physical: false},
-            {name: 'ColorPlus', os: 'windows', type: 'pixel', physical: false},
-            {name: 'ImageRight', os: 'windows', type: 'pixel', physical: false},
+            /** Windows File Printers */
+            new _Driver('Microsoft XPS Document Writer', _OS.WINDOWS, _Types.PIXEL, false),
+            new _Driver('Microsoft Print To PDF', _OS.WINDOWS, _Types.PIXEL, false),
+            new _Driver('Send to Microsoft OneNote', _OS.WINDOWS, _Types.PIXEL, false),
+            new _Driver('PDFCreator', _OS.WINDOWS, _Types.PIXEL, false),
+            new _Driver('PrimoPDF', _OS.WINDOWS, _Types.PIXEL, false),
+            new _Driver('CutePDFWriter', _OS.WINDOWS, _Types.PIXEL, false),
+            new _Driver('Bullzip PDF', _OS.WINDOWS, _Types.PIXEL, false),
+            new _Driver('Adobe PDF', _OS.WINDOWS, _Types.PIXEL, false),
+            new _Driver('doPDF', _OS.WINDOWS, _Types.PIXEL, false),
+            new _Driver('novaPDF', _OS.WINDOWS, _Types.PIXEL, false),
+            new _Driver('OPTIsend', _OS.WINDOWS, _Types.PIXEL, false),
+            new _Driver('pdf995', _OS.WINDOWS, _Types.PIXEL, false),
+            new _Driver('docPrint PDF', _OS.WINDOWS, _Types.PIXEL, false),
+            new _Driver('EmfPrinter', _OS.WINDOWS, _Types.PIXEL, false),
+            new _Driver('ColorPlus', _OS.WINDOWS, _Types.PIXEL, false),
+            new _Driver('ImageRight', _OS.WINDOWS, _Types.PIXEL, false),
 
-        /** Windows Raw-Only Printers **/
-            {name: 'Generic / Text Only', os: 'windows', type: 'raw', physical: true},
+            /** Windows Raw-Only Printers **/
+            new _Driver('Generic / Text Only', _OS.WINDOWS, _Types.RAW, true),
 
-        /** Windows Dual-Mode Printers **/
-            {name: 'ZDesigner', os: 'windows', type: 'both', physical: true},
-            {name: 'EPSON TM', os: 'windows', type: 'both', physical: true},
+            /** Windows Dual-Mode Printers **/
+            new _Driver('ZDesigner', _OS.WINDOWS, _Types.BOTH, true),
+            new _Driver('EPSON TM', _OS.WINDOWS, _Types.BOTH, true),
 
-        /** Mac Raw-Only Printers */
-         //   {name: 'FIXME', os: 'mac', type: 'raw', physical: true},
+            /** Mac Raw-Only Printers */
+            // new _Driver('FIXME', 'mac', 'raw', true)
 
         ],
 
         usbVendors: [
 
-        /** USB/HID Scales */
-            {name: 'Mettler Toledo', class: 'scale', vendor: '0x0EB8', product: '0xF000', device: '0x00', endpoint: '0x81'},
-            {name: 'Dymo', class: 'scale', vendor: '0x0922', product: '0x8009', device: '0x00', endpoint: '0x82'},
-            {name: 'Stamps.com', class: 'scale', vendor: '0x1446', product: '0x6A73', device: '0x00', endpoint: '0x81'},
+            /** USB/HID Scales */
+            new _Vendor('Mettler Toledo', 'scale', '0x0EB8', '0xF000', '0x00', '0x81'),
+            new _Vendor('Dymo', 'scale', '0x0922', '0x8009', '0x00', '0x82'),
+            new _Vendor('Stamps.com', 'scale', '0x1446', '0x6A73', '0x00', '0x81'),
 
         ],
 
         ///// PRIVATE METHODS /////
 
+        findPrintDriver: function(driverName) {
+            for(var i = 0; i < _sift.printDrivers.length; i++) {
+                var driver = _sift.printDrivers[i];
+                if (driver.name.toUpperCase() === driverName.toUpperCase()
+                        || driverName.toUpperCase().indexOf(driver.name.toUpperCase()) > -1) {
+                    return driver;
+                }
+            }
+
+            return _sift.printDrivers[0];
+        },
+
+        findUsbVendor: function() {
+            //TODO
+        },
+
+        filter: {
+            //loop through matching drivers for every item still in the list and remove if it matches the filter (bit matching)
+            type: function(list, param, value) {
+                for(var i = list.length - 1; i >= 0; i--) {
+                    var item = list[i];
+                    var driver = _sift.findPrintDriver(item.driver);
+
+                    if (driver && (driver[param] == value || (driver[param] & value) > 0)) {
+                        list.splice(i, 1);
+                    }
+                }
+            },
+
+            //look for printer style filters
+            printers: function(list, filter) {
+                if (filter.type !== undefined) { _sift.filter.type(list, 'type', filter.type); }
+                if (filter.physical !== undefined) { _sift.filter.type(list, 'physical', filter.physical); }
+                if (filter.os !== undefined) {
+                    if (typeof filter.os === 'boolean') {
+                        var appVersion = '';
+
+                        if (typeof(window.navigator) !== 'undefined') {
+                            appVersion = window.navigator.appVersion;
+
+                            var found;
+                            if (appVersion('Mac') != -1) {
+                                found = _OS.MAC;
+                            } else if (appVersion.indexOf('Linux') != -1 || appVersion.indexOf('X11') != -1) {
+                                found = _OS.LINUX;
+                            } else {
+                                found = _OS.WINDOWS;
+                            }
+
+                            if (filter.os === false) { found = ~found; }
+                            filter.os = found;
+                        } else {
+                            console.warn("Sifter cannot determine os; os filtering disabled");
+                            filter.os = null;
+                        }
+                    }
+
+                    _sift.filter.type(list, 'os', filter.os);
+                }
+                if (filter.name !== undefined) {
+                    var regex = new RegExp(filter.name);
+                    for(var i = list.length - 1; i >= 0; i--) {
+                        if (list[i].driver.match(regex)) {
+                            list.splice(i, 1);
+                        }
+                    }
+                }
+            },
+
+            //look for usb style filters
+            usb: function(list, filter) {
+                //TODO
+            }
+        },
+
         /** Parses scale reading from USB raw output */
-        parseScaleData: function (data) {
+        parseScaleData: function(data) {
             var weight = {
-                raw: null, value: null, toString: function () {
+                raw: null, value: null, toString: function() {
                     return weight.value;
                 },
                 units: {
-                    raw: null, value: null, toString: function () {
+                    raw: null, value: null, toString: function() {
                         return weight.units.value;
                     }
                 },
                 status: {
-                    raw: null, value: null, toString: function () {
+                    raw: null, value: null, toString: function() {
                         return weight.status.value;
                     }
                 },
@@ -92,7 +207,7 @@ var sift = (function() {
 
             // Get status
             weight.status.raw = parseInt(data[1], 16);
-            switch (weight.status.raw) {
+            switch(weight.status.raw) {
                 case 1: // fault
                 case 5: // underweight
                 case 6: // overweight
@@ -112,11 +227,11 @@ var sift = (function() {
             // Get precision
             weight.precision = parseInt(data[3], 16);
             weight.precision = weight.precision ^ -256; //unsigned to signed
-            weight.precision = weight.precision == -256 ? 0 : weight.precision; //xor on 0 causes issues
+            weight.precision = weight.precision == -256? 0:weight.precision; //xor on 0 causes issues
 
             // Get units
             weight.units.raw = parseInt(data[2], 16);
-            switch (weight.units.raw) {
+            switch(weight.units.raw) {
                 case 2:
                     weight.units.value = 'g';
                     break;
@@ -138,178 +253,115 @@ var sift = (function() {
             weight.raw = weight.toFixed(Math.abs(weight.precision));
             weight.value = weight + weight.units + ' - ' + status;
             return weight;
-        },
-
+        }
 
     };
 
-    ///// SIFTER CLASS ////
+    ///// PUBLIC DATA MAPPING /////
+
     // TODO: jsDocs for the Sifter class
-    function Sifter(type, options) {
-        var KEEP_KEY = '_sift_keep';
+    function Sifter(format, list) {
+        var _debug = true;
 
-        this.sift = function(data) {
-            if (!options.keep && !options.toss) {
-                console.warn("Invalid sift.  Must be { keep|toss: {...}}");
-                return data;
-            }
+        //setup variables used on a per-instance basis
+        Object.defineProperties(this, {
+            //constants
+            "format": { value: format, enumerable: true },
 
-            var sifted = data;
-            var params = options.keep || options.toss;
-            var keepFlag = options.keep ? true : false;
+            //accessor
+            "debug": { value: _debug, enumerable: true, writable: true },
 
-            if (DEBUG) {
-                console.log("Options provided:");
-                console.log(options);
-                console.log("Original data:");
-                console.log(data);
-            }
-
-            var debug = function(item, rule) {
-                if (DEBUG) {
-                    console.log("Marking " + type.toLowerCase() + " as " + (keepFlag ? "keep:" : "toss:"));
-                    console.log(item);
-                    console.log("matching data:");
-                    console.log(rule);
-                }
-            };
-
-            var osDetected;
-            if (params.os) {
-                var appVersion = '';
-
-                if (typeof(params.os) === 'string') appVersion = params.os;
-                else if (typeof(window.navigator) !== 'undefined') appVersion = window.navigator.appVersion;
-                else console.warn("Sifter cannot determine os; os filtering disabled");
-
-                if (appVersion('Mac')!=-1) osDetected = 'mac';
-                else if (appVersion.indexOf('X11')!=-1) osDetected = 'linux';
-                else if (appVersion.indexOf('Linux')!=-1) osDetected = 'linux';
-                else osDetected = 'windows';
-            }
-
-            ///// PRINTERS /////
-            if (type == 'PRINT') {
-                // FIXME - This logic is broken.  We need loop through and mark all non-virtuals as physicals an all non-raw as pixel
-                for (var i = 0; i < _sift.printDrivers.length; i++) {
-                    for (var j = 0; j < sifted.length; j++) {
-                        // Determine if the driver name matches
-                        var driverMatch = sifted[j].driver && sifted[j].driver.toLowerCase().indexOf(_sift.printDrivers[i].name.toLowerCase()) !== -1;
-
-                        // Toss or keep virtual/file printers (physical: true|false)
-                        if (params.physical !== undefined) {
-                            // if keep && physical or toss && virtual
-                            if (params.physical === keepFlag) {
-                                if (driverMatch) {
-                                    sifted[j][KEEP_KEY] = false; // Mark virtual printers for removal
-                                    debug(sifted[j], _sift.printDrivers[i]);
-                                }
-                            } else {
-                                if (!driverMatch) {
-                                    sifted[j][KEEP_KEY] = false; // Mark physical printers for removal
-                                    debug(sifted[j], _sift.printDrivers[i]);
-                                }
-                            }
-                        }
-
-                        // FIXME This appears to be broken
-                        // Toss or keep raw/pixel printers (type: 'pixel'|'raw'|'both')
-                        if (params.type !== undefined) {
-                            params.type = params.type.toLowerCase();
-                            var typeMatch = driverMatch && (_sift.printDrivers[i].type === params.type || _sift.printDrivers[i].type === 'both');
-
-                            if (typeMatch) {
-                                console.log(sifted[j].name + " " + _sift.printDrivers[i].type + " matches " + params.type);
-                            }
-
-                            if (typeMatch === !keepFlag) {
-                                sifted[j][KEEP_KEY] = false;
-                                debug(sifted[j], _sift.printDrivers[i]);
-                            }
-                        }
-
-                        // Enforce strict os matching based on windows.navigator or provided User Agent String
-                        if (osDetected) {
-                            var osMatch = driverMatch && (_sift.printDrivers[i].os === osDetected);
-                            if (osMatch === !keepFlag) {
-                                sifted[j][KEEP_KEY] = false;
-                                debug(sifted[j], _sift.printDrivers[i]);
-                            }
-                        }
-                    }
-                }
-            }
-
-            ///// USB/HID /////
-            if (type === 'USB') {
-                for (var i = 0; i < _sift.usbVendors; i++) {
-                    for (var j = 0; j < sifted.length; j++) {
-                        // TODO Filter for hardware type (scales) and partial vendor name matching
-                        throw "USB filtering not implemented";
-                    }
-                }
-            }
-
-            // Process results
-            for (var i = sifted.length -1; i >= 0 ; i--) {
-                var keep = sifted[i][KEEP_KEY]; // cache flag and remove it
-                delete sifted[i][KEEP_KEY];
-                if (keep === false) {
-                    sifted.splice(i, 1);
-                }
-            }
-
-            if (DEBUG) {
-                console.log("Sifted data:");
-                console.log(sifted);
-            }
-
-            return sifted;
-
-        }
+            //data
+            "originalList": { value: list },
+            "filteredList": { value: list.slice(), enumerable: true, writable: true } //copy list to separate reference
+        });
     }
 
-    ///// PUBLIC METHODS /////
+
+    //Setup constants shared across all instances
+    Object.defineProperties(Sifter, {
+        "PRINT": { value: 0 },
+        "USB": { value: 1 },
+
+        "Type": { value: _Types },
+        "OS": { value: _OS }
+    });
+
+
+    //Setup functions shared across all instances
 
     /**
-     * @namespace sift
-     * @typedef {Object} Sifter
+     * Will filter out only items that match specified filter.
      *
+     * @param filters TODO - docs
+     * @returns {Sifter} Reference to self to allow chaining calls.
      */
-    return {
-        /**
-         * Returns a filtered printer listing, based on the filter provided
-         * @param {Array<Object>} [all] List of printer objects to filter
-         *  @param {string} [all.driver='Generic / Text Only'] Driver name retured from the OS
-         *  @param {number} [all.dpi=600] Printer density, in dots per inch
-         * @param {Object} [keep] Filter options
-         *  @param {Sifter|Array<Sifter>}
-         * @returns {Array<Object>}
-         * TODO: Finish documentation
-         *
-         * @memberof sift.printers
-         */
-        printers: function(all, options) {
-            return new Sifter('PRINT', options).sift(all);
-        },
-
-        usb: function(all, options) {
-            return new Sifter('USB', options).sift(all);
-        },
-
-        setDebug: function(debug) {
-            DEBUG = debug;
+    Sifter.prototype.toss = function(filters) {
+        //noinspection FallThroughInSwitchStatementJS
+        switch(this.format) {
+            default:
+                console.warn("Using unknown type '" + this.format + "' on Sifter instance. Defaulting to PRINT");
+            case Sifter.PRINT:
+                _sift.filter.printers(this.filteredList, filters);
+                break;
+            case Sifter.USB:
+                _sift.filter.usb(this.filteredList, filters);
+                break;
         }
-    }
+
+        return this;
+    };
+
+    /**
+     * Will filter out any items that do not match the specified filter.
+     *
+     * @param filters TODO - docs
+     * @returns {Sifter} Reference to self to allow chaining calls.
+     */
+    Sifter.prototype.keep = function(filters) {
+        //to keep these filters we need to toss everything that isn't, so flip all the filters and call .toss()
+        for(var key in filters) {
+            if (filters.hasOwnProperty(key)) {
+                if (typeof filters[key] === 'boolean') {
+                    filters[key] = !filters[key];
+                } else if (typeof filters[key] === 'string') {
+                    filters[key] = '^((?!'+filters[key]+').)*$'; //strings used as regex, flip to negative lookahead
+                } else {
+                    filters[key] = ~filters[key];
+                }
+            }
+        }
+
+        return this.toss(filters);
+    };
+
+    /**
+     * @returns {Array} Returned the list as filtered by any <code>keep</code> or <code>toss</code> calls.
+     */
+    Sifter.prototype.list = function() {
+        return this.filteredList;
+    };
+
+    /**
+     * Restore the Sifter's list back to its original collection.
+     * @returns {Sifter} Reference to self to allow chaining calls.
+     */
+    Sifter.prototype.reset = function() {
+        this.filteredList = this.originalList.slice();
+        return this;
+    };
+
+
+    return Sifter;
 
 })();
 
 (function() {
     if (typeof define === 'function' && define.amd) {
-        define(sift);
+        define(Sifter);
     } else if (typeof exports === 'object') {
-        module.exports = sift;
+        module.exports = Sifter;
     } else {
-        window.sift = sift;
+        window.sift = Sifter;
     }
 })();
