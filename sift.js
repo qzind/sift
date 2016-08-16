@@ -58,12 +58,12 @@ var Sifter = (function() {
             new _Driver('UNKNOWN', null, _Types.PIXEL, true),
 
             /** Mac File Printers */
-            new _Driver('PDFwriter.ppd', _OS.MAC, _Types.PIXEL, false),
-            new _Driver('Print_to_VipRiser.ppd', _OS.MAC, _Types.PIXEL, false),
-            new _Driver('Virtual_PDF_Printer.ppd', _OS.MAC, _Types.PIXEL, false),
+            new _Driver('PDFwriter.PPD', _OS.MAC, _Types.PIXEL, false),
+            new _Driver('vipriser.PPD', _OS.MAC, _Types.PIXEL, false),
+            new _Driver('PSCOLOR.PPD', _OS.MAC, _Types.PIXEL, false),
 
             /** Linux File Printers */
-            new _Driver('PDF.ppd', _OS.LINUX, _Types.PIXEL, false),
+            new _Driver('CUPS-PDF.PPD', _OS.LINUX, _Types.PIXEL, false),
 
             /** Windows File Printers */
             new _Driver('Microsoft XPS Document Writer', _OS.WINDOWS, _Types.PIXEL, false),
@@ -91,8 +91,16 @@ var Sifter = (function() {
             new _Driver('EPSON TM', _OS.WINDOWS, _Types.BOTH, true),
 
             /** Mac Raw-Only Printers */
-            // new _Driver('FIXME', 'mac', 'raw', true)
+            new _Driver('TEXTONLY.PPD', _OS.MAC, _Types.RAW, true),
 
+            /** Mac Dual-Mode Printers */
+            new Driver('TM-T88V.PPD', _OS.MAC, _Types.BOTH, true),
+
+            /** Linux Raw-Only Printers */
+            new _Driver('TEXTONLY.PPD', _OS.LINUX, _Types.RAW, true),
+
+            /** Linux Dual-Mode Printers */
+            new Driver('EPTMBATH.PPD', _OS.LINUX, _Types.BOTH, true),
         ],
 
         usbVendors: [
