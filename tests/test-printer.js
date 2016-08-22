@@ -1,11 +1,11 @@
 'use strict';
 
-var TestSuite = {
+var Stepper = {
     /** Provides logging directly to browser window, if available */
     display: {
-        log: function(o) { TestSuite.display.display(o, 'INFO'); },
-        warn: function(o) { TestSuite.display.display(o, 'WARN'); },
-        error: function(o) { TestSuite.display.display(o, 'ERROR'); },
+        log: function(o) { Stepper.display.display(o, 'INFO'); },
+        warn: function(o) { Stepper.display.display(o, 'WARN'); },
+        error: function(o) { Stepper.display.display(o, 'ERROR'); },
         display: function(o, type) {
             var element = document.createElement('pre');
             element.innerHTML = type + ":  " + (typeof(o) !== 'string'? JSON.stringify(o):o);
@@ -22,47 +22,60 @@ var TestSuite = {
     },
 
     /** Provides tracking and checking of test steps */
-    stepper: {
-        name: null, original: null, filtered: null, flag: 0,
+    original: null,
+    checkStep: function(name, filtered, filtering) {
+        var err = { not: [], was: [] };
 
-        checkStep: function(name, filtered, filteredFlag) {
-            TestSuite.stepper.name = name;
-            TestSuite.stepper.filtered = filtered;
-            TestSuite.stepper.flag = filteredFlag;
+        for(var i = 0; i < Stepper.original.length; i++) {
+            var item = Stepper.original[i];
+            var index = filtered.indexOf(item);
+            var key;
 
-            TestSuite.stepper.validate();
-        },
-
-        validate: function() {
-            var err = null;
-            for(var i = 0; i < TestSuite.stepper.original.length; i++) {
-                var item = TestSuite.stepper.original[i];
-                var index = TestSuite.stepper.filtered.indexOf(item);
-
-                console.log(index, (index == -1? 'X':'O'), '- FLAGS', TestSuite.stepper.flag, ' =?= ', TestSuite.stepper.flag & item.test);
-
-                //if it's in the filtered list, but it isn't suppose to be - throw an error
-                if (index > -1 && (TestSuite.stepper.flag & item.test) > 0) {
-                    err = 'FAILED on step "' + TestSuite.stepper.name + '".' +
-                            '\n\tItem not filtered: ' + JSON.stringify(item) +
-                            '\n\tData: ' + JSON.stringify(TestSuite.stepper.filtered);
-                    break;
-                }
-                //if it's not in the filtered list, but it is suppose to be - throw an error
-                if (index == -1 && (TestSuite.stepper.flag & item.test) == 0) {
-                    err = 'FAILED on step "' + TestSuite.stepper.name + '".' +
-                            '\n\tItem was filtered: ' + JSON.stringify(item) +
-                            '\n\tData: ' + JSON.stringify(TestSuite.stepper.filtered);
-                    break;
+            if (filtering.tossed) {
+                for(key in filtering.tossed) {
+                    if (filtering.tossed.hasOwnProperty(key)) {
+                        //if it's in the filtered list, but it isn't suppose to be - throw an error
+                        if (index > -1 && item.details[key] === filtering.tossed[key]) {
+                            err.not.push(item);
+                        }
+                        //if it's not in the filtered list, but it is suppose to be - throw an error
+                        if (index === -1 && item.details[key] !== filtering.tossed[key]) {
+                            err.was.push(item);
+                        }
+                    }
                 }
             }
 
-            if (err) {
-                TestSuite.display.error(err);
-                throw err;
-            } else {
-                TestSuite.display.log('PASS on step "' + TestSuite.stepper.name + '"');
+            if (filtering.kept) {
+                for(key in filtering.kept) {
+                    if (filtering.kept.hasOwnProperty(key)) {
+                        //if it's in the filtered list, but it isn't suppose to be - throw an error
+                        if (index > -1 && item.details[key] !== filtering.kept[key]) {
+                            err.not.push(item);
+                        }
+                        //if it's not in the filtered list, but it is suppose to be - throw an error
+                        if (index === -1 && item.details[key] === filtering.kept[key]) {
+                            err.was.push(item);
+                        }
+                    }
+                }
             }
+        }
+
+        if (err.not.length || err.was.length) {
+            var errMsg = 'FAILED on step "' + name + '"';
+            for(i = 0; i < err.not.length; i++) {
+                errMsg += '\n\tItem not filtered: ' + JSON.stringify(err.not[i]);
+            }
+            for(i = 0; i < err.was.length; i++) {
+                errMsg += '\n\tItem was filtered: ' + JSON.stringify(err.was[i]);
+            }
+            errMsg += '\n\tData: ' + JSON.stringify(filtered);
+
+            Stepper.display.error(errMsg);
+            throw err;
+        } else {
+            Stepper.display.log('PASS on step "' + name + '"');
         }
     },
 
@@ -70,43 +83,41 @@ var TestSuite = {
     tests: {
         /** Test results on printer formatted lists */
         printer: function() {
-            //test result filtering flags - active if entry should be removed after filter call
-            var REMOVE_VIRTUAL = 1, REMOVE_PHYSICAL = 2, REMOVE_PIXEL = 4, REMOVE_RAW = 8, REMOVE_BOTH = 16, REMOVE_NAME = 32, REMOVE_UNNAME = 64;
 
             var testData = [
-                { name: 'HP Color LaserJet 2500', driver: 'HP Color LaserJet 2500 PS Class Driver', test: REMOVE_PHYSICAL | REMOVE_PIXEL | REMOVE_UNNAME },
-                { name: 'PDFwriter', driver: '/private/etc/cups/ppd/PDFwriter.ppd', test: REMOVE_VIRTUAL | REMOVE_PIXEL | REMOVE_NAME },
-                { name: 'ZDesigner LP2844', driver: 'ZDesigner LP 2844.ppd', test: REMOVE_PHYSICAL | REMOVE_BOTH | REMOVE_UNNAME },
-                { name: 'Epson TM88 IV', driver: 'Generic / Text Only', test: REMOVE_PHYSICAL | REMOVE_RAW | REMOVE_UNNAME },
-                { name: 'PDF', driver: 'CUPS-PDF.PPD', test: REMOVE_VIRTUAL | REMOVE_PIXEL | REMOVE_NAME }
+                { name: 'HP Color LaserJet 2500', driver: 'HP Color LaserJet 2500 PS Class Driver', details: { physical: true, type: 'pixel', named: false } },
+                { name: 'PDFwriter', driver: 'PDFwriter.ppd', details: { physical: false, type: 'pixel', named: true } },
+                { name: 'ZDesigner LP2844', driver: 'ZDesigner LP 2844.ppd', details: { physical: true, type: 'both', named: false } },
+                { name: 'Epson TM88 IV', driver: 'Generic / Text Only', details: { physical: true, type: 'raw', named: false } },
+                { name: 'PDF', driver: 'CUPS-PDF.PPD', details: { physical: false, type: 'pixel', named: true } }
             ];
 
             sift.debug(true);
 
-            TestSuite.stepper.original = testData;
+            Stepper.original = testData;
 
-            TestSuite.stepper.checkStep('Remove Virtual File Printers', sift.toss(testData, { physical: false }), REMOVE_VIRTUAL);
-            TestSuite.stepper.checkStep('Keep Virtual File Printers', sift.keep(testData, { physical: false }), REMOVE_PHYSICAL);
+            Stepper.checkStep('Remove Virtual File Printers', sift.toss(testData, { physical: false }), { tossed: { physical: false } });
+            Stepper.checkStep('Keep Virtual File Printers', sift.keep(testData, { physical: false }), { kept: { physical: false } });
 
-            TestSuite.stepper.checkStep('Remove Physical Printers', sift.toss(testData, { physical: true }), REMOVE_PHYSICAL);
-            TestSuite.stepper.checkStep('Keep Physical Printers', sift.keep(testData, { physical: true }), REMOVE_VIRTUAL);
+            Stepper.checkStep('Remove Physical Printers', sift.toss(testData, { physical: true }), { tossed: { physical: true } });
+            Stepper.checkStep('Keep Physical Printers', sift.keep(testData, { physical: true }), { kept: { physical: true } });
 
-            TestSuite.stepper.checkStep('Remove Pixel Only Printers', sift.toss(testData, { type: sift.Type.PIXEL }), REMOVE_PIXEL);
-            TestSuite.stepper.checkStep('Keep Pixel Only Printers', sift.keep(testData, { type: sift.Type.PIXEL }), REMOVE_RAW | REMOVE_BOTH);
+            Stepper.checkStep('Remove Pixel Only Printers', sift.toss(testData, { type: sift.Type.PIXEL }), { tossed: { type: 'pixel' } });
+            Stepper.checkStep('Keep Pixel Only Printers', sift.keep(testData, { type: sift.Type.PIXEL }), { kept: { type: 'pixel' } });
 
-            TestSuite.stepper.checkStep('Remove Raw Only Printers', sift.toss(testData, { type: sift.Type.RAW }), REMOVE_RAW);
-            TestSuite.stepper.checkStep('Keep Raw Only Printers', sift.keep(testData, { type: sift.Type.RAW }), REMOVE_BOTH | REMOVE_PIXEL);
+            Stepper.checkStep('Remove Raw Only Printers', sift.toss(testData, { type: sift.Type.RAW }), { tossed: { type: 'raw' } });
+            Stepper.checkStep('Keep Raw Only Printers', sift.keep(testData, { type: sift.Type.RAW }), { kept: { type: 'raw' } });
 
-            TestSuite.stepper.checkStep('Remove Dual Only Printers', sift.toss(testData, { type: sift.Type.BOTH }), REMOVE_BOTH);
-            TestSuite.stepper.checkStep('Keep Dual Only Printers', sift.keep(testData, { type: sift.Type.BOTH }), REMOVE_PIXEL | REMOVE_RAW);
+            Stepper.checkStep('Remove Dual Only Printers', sift.toss(testData, { type: sift.Type.BOTH }), { tossed: { type: 'both' } });
+            Stepper.checkStep('Keep Dual Only Printers', sift.keep(testData, { type: sift.Type.BOTH }), { kept: { type: 'both' } });
 
-            TestSuite.stepper.checkStep('Remove "PDF" Printers', sift.toss(testData, { name: "PDF" }), REMOVE_NAME);
-            TestSuite.stepper.checkStep('Keep "PDF" Printers', sift.keep(testData, { name: "PDF" }), REMOVE_UNNAME);
+            Stepper.checkStep('Remove "PDF" Printers', sift.toss(testData, { name: "PDF" }), { tossed: { named: true } });
+            Stepper.checkStep('Keep "PDF" Printers', sift.keep(testData, { name: "PDF" }), { kept: { named: true } });
 
             //TODO ??
-            // TestSuite.stepper.checkStep('Remove Printers', sift.toss({ os: sift.OS.MAC }));
-            // TestSuite.stepper.checkStep('Remove Printers', sift.toss({ os: sift.OS.LINUX }));
-            // TestSuite.stepper.checkStep('Remove Printers', sift.toss({ os: sift.OS.WINDOWS }));
+            // Stepper.checkStep('Remove Printers', sift.toss({ os: sift.OS.MAC }), ..);
+            // Stepper.checkStep('Remove Printers', sift.toss({ os: sift.OS.LINUX }), ..);
+            // Stepper.checkStep('Remove Printers', sift.toss({ os: sift.OS.WINDOWS }), ..);
         },
 
         /** Test results on usb formatted lists */
