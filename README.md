@@ -13,3 +13,12 @@ Sift is a JavaScript helper for locally attached computer hardware.  It filters 
 ## Utilities
 * **USB scales**
   * Parses USB scale weight from raw byte array
+
+## Usage
+```js
+// keep raw printers only
+data = sift.keep(data, { sift.Type.RAW });
+
+// toss virtual or file printers
+data = sift.toss(data, { physical: false });
+```
