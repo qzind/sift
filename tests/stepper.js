@@ -7,9 +7,11 @@ var Stepper = {
         warn: function(o) { Stepper.display.display(o, 'WARN'); },
         error: function(o) { Stepper.display.display(o, 'ERROR'); },
         display: function(o, type) {
-            var element = document.createElement('pre');
-            element.innerHTML = type + ":  " + (typeof(o) !== 'string'? JSON.stringify(o):o);
-            document.body.appendChild(element);
+            if (typeof(document) !== 'undefined') {
+				var element = document.createElement('pre');
+				element.innerHTML = type + ":  " + (typeof(o) !== 'string'? JSON.stringify(o):o);
+				document.body.appendChild(element);
+			}
             switch(type) {
                 case 'INFO':
                     return console.info(o);
@@ -126,3 +128,13 @@ var Stepper = {
         }
     }
 };
+
+(function() {
+    if (typeof define === 'function' && define.amd) {
+        define(Stepper);
+    } else if (typeof exports === 'object') {
+        module.exports = Stepper;
+    } else {
+        window.Stepper = Stepper;
+    }
+})();
