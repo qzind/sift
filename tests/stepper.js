@@ -8,10 +8,10 @@ var Stepper = {
         error: function(o) { Stepper.display.display(o, 'ERROR'); },
         display: function(o, type) {
             if (typeof(document) !== 'undefined') {
-				var element = document.createElement('pre');
-				element.innerHTML = type + ":  " + (typeof(o) !== 'string'? JSON.stringify(o):o);
-				document.body.appendChild(element);
-			}
+                var element = document.createElement('pre');
+                element.innerHTML = type + ":  " + (typeof(o) !== 'string'? JSON.stringify(o):o);
+                document.body.appendChild(element);
+            }
             switch(type) {
                 case 'INFO':
                     return console.info(o);
@@ -105,13 +105,19 @@ var Stepper = {
             Stepper.checkStep('Keep Physical Printers', sift.keep(testData, { physical: true }), { kept: { physical: true } });
 
             Stepper.checkStep('Remove Pixel Only Printers', sift.toss(testData, { type: sift.Type.PIXEL }), { tossed: { type: 'pixel' } });
+            Stepper.checkStep('Remove Pixel Only Printers String Test', sift.toss(testData, { type: 'pixel' }), { tossed: { type: 'pixel' } });
             Stepper.checkStep('Keep Pixel Only Printers', sift.keep(testData, { type: sift.Type.PIXEL }), { kept: { type: 'pixel' } });
+            Stepper.checkStep('Keep Pixel Only Printers String Test', sift.keep(testData, { type: 'pixel' }), { kept: { type: 'pixel' } });
 
             Stepper.checkStep('Remove Raw Only Printers', sift.toss(testData, { type: sift.Type.RAW }), { tossed: { type: 'raw' } });
+            Stepper.checkStep('Remove Raw Only Printers String Test', sift.toss(testData, { type: 'raw' }), { tossed: { type: 'raw' } });
             Stepper.checkStep('Keep Raw Only Printers', sift.keep(testData, { type: sift.Type.RAW }), { kept: { type: 'raw' } });
+            Stepper.checkStep('Keep Raw Only Printers String Test', sift.keep(testData, { type: 'raw' }), { kept: { type: 'raw' } });
 
             Stepper.checkStep('Remove Dual Only Printers', sift.toss(testData, { type: sift.Type.BOTH }), { tossed: { type: 'both' } });
+            Stepper.checkStep('Remove Dual Only Printers String Test', sift.toss(testData, { type: 'both' }), { tossed: { type: 'both' } });
             Stepper.checkStep('Keep Dual Only Printers', sift.keep(testData, { type: sift.Type.BOTH }), { kept: { type: 'both' } });
+            Stepper.checkStep('Keep Dual Only Printers String Test', sift.keep(testData, { type: 'both' }), { kept: { type: 'both' } });
 
             Stepper.checkStep('Remove "PDF" Printers', sift.toss(testData, { name: "PDF" }), { tossed: { named: true } });
             Stepper.checkStep('Keep "PDF" Printers', sift.keep(testData, { name: "PDF" }), { kept: { named: true } });

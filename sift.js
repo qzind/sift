@@ -117,6 +117,15 @@ var Sifter = (function() {
 
         ///// PRIVATE METHODS /////
 
+        parseConst: function(strVal) {
+            var upp = strVal.toUpperCase();
+
+            if (Types[upp]) { return Types[upp]; }
+            if (OS[upp]) { return OS[upp]; }
+
+            return null;
+        },
+
         findPrintDriver: function(driverName) {
             for(var i = 0; i < internal.printDrivers.length; i++) {
                 var driver = internal.printDrivers[i];
@@ -211,6 +220,15 @@ var Sifter = (function() {
             if (!list || list.length == 0) { return list; }
             var alter = list.slice();
 
+            for(var key in filters) {
+                if (filters.hasOwnProperty(key)) {
+                    if (typeof filters[key] === 'string') {
+                        var result = internal.parseConst(filters[key]);
+                        if (result) { filters[key] = result; }
+                    }
+                }
+            }
+
             if (alter[0].driver !== undefined) {
                 internal.filter.printers(alter, filters);
             } else if (alter[0].vendor !== undefined) {
@@ -237,7 +255,12 @@ var Sifter = (function() {
                     if (typeof filters[key] === 'boolean') {
                         filters[key] = !filters[key];
                     } else if (typeof filters[key] === 'string') {
-                        filters[key] = '^((?!' + filters[key] + ').)*$'; //strings used as regex, flip to negative lookahead
+                        var result = internal.parseConst(filters[key]);
+                        if (result) {
+                            filters[key] = ~result;
+                        } else {
+                            filters[key] = '^((?!' + filters[key] + ').)*$'; //strings used as regex, flip to negative lookahead
+                        }
                     } else {
                         filters[key] = ~filters[key];
                     }
