@@ -34,7 +34,8 @@ var Sifter = (function() {
     Object.defineProperties(OS, {
         "MAC": { value: 1 },
         "LINUX": { value: 2 },
-        "WINDOWS": { value: 4 }
+        "WINDOWS": { value: 4 },
+        "ANY": { value: -8 } //negative sum of previous bits
     });
 
     //usb device mapping
@@ -55,7 +56,7 @@ var Sifter = (function() {
     var internal = {
 
         printDrivers: [
-            new Driver('UNKNOWN', null, Types.PIXEL, true),
+            new Driver('UNKNOWN', OS.ANY, Types.PIXEL, true),
 
             /** Mac File Printers */
             new Driver('PDFwriter.PPD', OS.MAC, Types.PIXEL, false),

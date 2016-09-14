@@ -37,11 +37,11 @@ var Stepper = {
                 for(key in filtering.tossed) {
                     if (filtering.tossed.hasOwnProperty(key)) {
                         //if it's in the filtered list, but it isn't suppose to be - throw an error
-                        if (index > -1 && item.details[key] === filtering.tossed[key]) {
+                        if (index > -1 && filtering.tossed[key].indexOf(item.details[key]) > -1) {
                             err.not.push(item);
                         }
                         //if it's not in the filtered list, but it is suppose to be - throw an error
-                        if (index === -1 && item.details[key] !== filtering.tossed[key]) {
+                        if (index === -1 && filtering.tossed[key].indexOf(item.details[key]) === -1) {
                             err.was.push(item);
                         }
                     }
@@ -52,11 +52,11 @@ var Stepper = {
                 for(key in filtering.kept) {
                     if (filtering.kept.hasOwnProperty(key)) {
                         //if it's in the filtered list, but it isn't suppose to be - throw an error
-                        if (index > -1 && item.details[key] !== filtering.kept[key]) {
+                        if (index > -1 && filtering.kept[key].indexOf(item.details[key]) === -1) {
                             err.not.push(item);
                         }
                         //if it's not in the filtered list, but it is suppose to be - throw an error
-                        if (index === -1 && item.details[key] === filtering.kept[key]) {
+                        if (index === -1 && filtering.kept[key].indexOf(item.details[key]) > -1) {
                             err.was.push(item);
                         }
                     }
@@ -87,22 +87,32 @@ var Stepper = {
         printer: function() {
 
             var testData = [
-                { name: 'HP Color LaserJet 2500', driver: 'HP Color LaserJet 2500 PS Class Driver', details: { physical: true, type: 'pixel', named: false } },
-                { name: 'PDFwriter', driver: 'PDFwriter.ppd', details: { physical: false, type: 'pixel', named: true } },
-                { name: 'ZDesigner LP2844', driver: 'ZDesigner LP 2844.ppd', details: { physical: true, type: 'both', named: false } },
-                { name: 'Epson TM88 IV', driver: 'Generic / Text Only', details: { physical: true, type: 'raw', named: false } },
-                { name: 'PDF', driver: 'CUPS-PDF.PPD', details: { physical: false, type: 'pixel', named: true } }
+                {
+                    name: 'HP Color LaserJet 2500',
+                    driver: 'HP Color LaserJet 2500 PS Class Driver',
+                    details: { physical: true, type: 'pixel', os: 'any', named: false }
+                },
+                { name: 'PDFwriter', driver: 'PDFwriter.ppd', details: { physical: false, type: 'pixel', os: 'mac', named: true } },
+                { name: 'ZDesigner LP2844', driver: 'ZDesigner LP 2844.ppd', details: { physical: true, type: 'both', os: 'windows', named: false } },
+                { name: 'Epson TM88 IV', driver: 'Generic / Text Only', details: { physical: true, type: 'raw', os: 'windows', named: false } },
+                { name: 'PDF', driver: 'CUPS-PDF.PPD', details: { physical: false, type: 'pixel', os: 'linux', named: true } }
             ];
 
             sift.debug(true);
 
             Stepper.original = testData;
 
+            //temporary way of cleanly testing expected booleans along-side possible array contents
+            Boolean.prototype.indexOf = function(val) {
+                return (this === val? 1:-1);
+            };
+
             Stepper.checkStep('Remove Virtual File Printers', sift.toss(testData, { physical: false }), { tossed: { physical: false } });
             Stepper.checkStep('Keep Virtual File Printers', sift.keep(testData, { physical: false }), { kept: { physical: false } });
 
             Stepper.checkStep('Remove Physical Printers', sift.toss(testData, { physical: true }), { tossed: { physical: true } });
             Stepper.checkStep('Keep Physical Printers', sift.keep(testData, { physical: true }), { kept: { physical: true } });
+
 
             Stepper.checkStep('Remove Pixel Only Printers', sift.toss(testData, { type: sift.Type.PIXEL }), { tossed: { type: 'pixel' } });
             Stepper.checkStep('Remove Pixel Only Printers String Test', sift.toss(testData, { type: 'pixel' }), { tossed: { type: 'pixel' } });
@@ -119,13 +129,28 @@ var Stepper = {
             Stepper.checkStep('Keep Dual Only Printers', sift.keep(testData, { type: sift.Type.BOTH }), { kept: { type: 'both' } });
             Stepper.checkStep('Keep Dual Only Printers String Test', sift.keep(testData, { type: 'both' }), { kept: { type: 'both' } });
 
-            Stepper.checkStep('Remove "PDF" Printers', sift.toss(testData, { name: "PDF" }), { tossed: { named: true } });
-            Stepper.checkStep('Keep "PDF" Printers', sift.keep(testData, { name: "PDF" }), { kept: { named: true } });
 
-            //TODO ??
-            // Stepper.checkStep('Remove Printers', sift.toss({ os: sift.OS.MAC }), ..);
-            // Stepper.checkStep('Remove Printers', sift.toss({ os: sift.OS.LINUX }), ..);
-            // Stepper.checkStep('Remove Printers', sift.toss({ os: sift.OS.WINDOWS }), ..);
+            Stepper.checkStep('Remove Windows Only Printers', sift.toss(testData, { os: sift.OS.WINDOWS }), { tossed: { os: 'windows' } });
+            Stepper.checkStep('Remove Windows Only Printers String Test', sift.toss(testData, { os: 'windows' }), { tossed: { os: 'windows' } });
+            Stepper.checkStep('Keep Any Windows Printers', sift.keep(testData, { os: sift.OS.WINDOWS }), { kept: { os: ['windows', 'any'] } });
+            Stepper.checkStep('Keep Any Windows Printers String Test', sift.keep(testData, { os: 'windows' }), { kept: { os: ['windows', 'any'] } });
+
+            Stepper.checkStep('Remove Linux Only Printers', sift.toss(testData, { os: sift.OS.LINUX }), { tossed: { os: 'linux' } });
+            Stepper.checkStep('Remove Linux Only Printers String Test', sift.toss(testData, { os: 'linux' }), { tossed: { os: 'linux' } });
+            Stepper.checkStep('Keep Any Linux Printers', sift.keep(testData, { os: sift.OS.LINUX }), { kept: { os: ['linux', 'any'] } });
+            Stepper.checkStep('Keep Any Linux Printers String Test', sift.keep(testData, { os: 'linux' }), { kept: { os: ['linux', 'any'] } });
+
+            Stepper.checkStep('Remove Mac Only Printers', sift.toss(testData, { os: sift.OS.MAC }), { tossed: { os: 'mac' } });
+            Stepper.checkStep('Remove Mac Only Printers String Test', sift.toss(testData, { os: 'mac' }), { tossed: { os: 'mac' } });
+            Stepper.checkStep('Keep Any Mac Printers', sift.keep(testData, { os: sift.OS.MAC }), { kept: { os: ['mac', 'any'] } });
+            Stepper.checkStep('Keep Any Mac Printers String Test', sift.keep(testData, { os: 'mac' }), { kept: { os: ['mac', 'any'] } });
+
+
+            Stepper.checkStep('Remove "PDF" Named Printers', sift.toss(testData, { name: "PDF" }), { tossed: { named: true } });
+            Stepper.checkStep('Keep "PDF" Named Printers', sift.keep(testData, { name: "PDF" }), { kept: { named: true } });
+
+            //remove our prototype changes
+            Boolean.prototype.indexOf = undefined;
         },
 
         /** Test results on usb formatted lists */
