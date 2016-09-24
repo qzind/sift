@@ -53,6 +53,41 @@ var Sifter = (function() {
         });
     }
 
+    //mac address
+    function Mac(address) {
+        var _raw = address.replace(/[^A-Fa-f0-9]/g, "").toUpperCase();
+
+        var _notBurnedIn = ['00000000000000E0'];
+
+        var _vmGuests = [
+            '00-50-56', '00-0C-29', '00-05-69', //vmware
+            '00-03-FF', //microsoft
+            '00-1C-42', //parallells
+            '00-0F-4B', '00-16-3E', '08-00-27' //xen,vbox
+        ];
+
+        function _isBurnedIn(mac) {
+            for (var i = 0; i < _notBurnedIn.length; i++)
+                if (mac.indexOf(_notBurnedIn[i]) == 0) return false;
+            //second insignificant bit of first octet is zero per IEEE 802
+            return parseInt(mac.substring(0, 2), 16).toString(2).slice(-8).substring(6, 7) == '0';
+        }
+
+        function _isVmGuest(mac) {
+            for (var i = 0; i < _vmGuests.length; i++)
+                if (mac.indexOf(_vmGuests[i]) == 0) return true;
+            return false;
+        }
+
+        //properties will be visible, but uneditable
+        Object.defineProperties(this, {
+                "value": { value: _raw, enumerable: true },
+                "burnedIn": { value: _isBurnedIn(_raw), enumerable: true },
+                "vmGuest": { value: _isVmGuest(_raw), enumerable: true },
+                "toString": { value : function() { return _raw.match( /.{1,2}/g ).join(':'); }, enumerable: false }
+        });
+    }
+
     var internal = {
 
         printDrivers: [
