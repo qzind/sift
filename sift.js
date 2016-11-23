@@ -24,20 +24,6 @@ var Sifter = (function() {
         });
     }
 
-    //printer filter properties (NOTE: uses single bit values so .keep() filters can just be flipped)
-    var Types = {}, OS = {};
-    Object.defineProperties(Types, {
-        "PIXEL": { value: 1 },
-        "RAW": { value: 2 },
-        "BOTH": { value: 4 }
-    });
-    Object.defineProperties(OS, {
-        "MAC": { value: 1 },
-        "LINUX": { value: 2 },
-        "WINDOWS": { value: 4 },
-        "ANY": { value: -8 } //negative sum of previous bits
-    });
-
     //usb device mapping
     function Vendor(name, type, vendor, product, device, endpoint) {
         //properties will be visible, but uneditable
@@ -54,39 +40,57 @@ var Sifter = (function() {
     }
 
     //mac address
-    function Mac(address) {
-        var _raw = address.replace(/[^A-Fa-f0-9]/g, "").toUpperCase();
+    var macCalls = {
+        nonBurntAddressMasks: [
+            '00000000000000E0'
+        ],
+        burned: function(address) {
+            if (!address) { return true; }
 
-        var _notBurnedIn = ['00000000000000E0'];
+            var plain = macCalls.plain(address);
 
-        var _vmGuests = [
-            '00-50-56', '00-0C-29', '00-05-69', //vmware
-            '00-03-FF', //microsoft
-            '00-1C-42', //parallells
-            '00-0F-4B', '00-16-3E', '08-00-27' //xen,vbox
-        ];
+            for(var i = 0; i < macCalls.nonBurntAddressMasks.length; i++) {
+                if (plain.indexOf(macCalls.nonBurntAddressMasks[i]) == 0) {
+                    return false;
+                }
+            }
 
-        function _isBurnedIn(mac) {
-            for (var i = 0; i < _notBurnedIn.length; i++)
-                if (mac.indexOf(_notBurnedIn[i]) == 0) return false;
             //second insignificant bit of first octet is zero per IEEE 802
-            return parseInt(mac.substring(0, 2), 16).toString(2).slice(-8).substring(6, 7) == '0';
-        }
+            return parseInt(plain.substring(0, 2), 16).toString(2).slice(-8).substring(6, 7) == '0';
+        },
 
-        function _isVmGuest(mac) {
-            for (var i = 0; i < _vmGuests.length; i++)
-                if (mac.indexOf(_vmGuests[i]) == 0) return true;
-            return false;
+        plain: function(address) {
+            return address.replace(/[^A-Fa-f0-9]/g, "").toUpperCase();
         }
+    };
 
-        //properties will be visible, but uneditable
+    function Mac(address, isVM) {
+        function _prop(val) { return { value: val, enumerable: true }; }
+
         Object.defineProperties(this, {
-                "value": { value: _raw, enumerable: true },
-                "burnedIn": { value: _isBurnedIn(_raw), enumerable: true },
-                "vmGuest": { value: _isVmGuest(_raw), enumerable: true },
-                "toString": { value : function() { return _raw.match( /.{1,2}/g ).join(':'); }, enumerable: false }
+            "mac": _prop(macCalls.plain(address)),
+            "vmGuest": _prop(isVM),
+            "burnedIn": _prop(macCalls.burned(address))
         });
     }
+
+
+    //filter properties (NOTE: uses single bit values so .keep() filters can just be flipped)
+
+    //printer
+    var Types = {}, OS = {};
+    Object.defineProperties(Types, {
+        "PIXEL": { value: 1 },
+        "RAW": { value: 2 },
+        "BOTH": { value: 4 }
+    });
+    Object.defineProperties(OS, {
+        "MAC": { value: 1 },
+        "LINUX": { value: 2 },
+        "WINDOWS": { value: 4 },
+        "ANY": { value: -8 } //negative sum of previous bits
+    });
+
 
     var internal = {
 
@@ -151,6 +155,28 @@ var Sifter = (function() {
 
         ],
 
+        networkAdapters: [
+            new Mac('', false),
+
+            /** VMWare */
+            new Mac('00-50-56-', true),
+            new Mac('00-0C-29-', true),
+            new Mac('00-05-69-', true),
+
+            /** Microsoft */
+            new Mac('00-03-FF-', true),
+
+            /** Parallells */
+            new Mac('00-1C-42-', true),
+
+            /** Xen, VBox */
+            new Mac('00-0F-4B-', true),
+            new Mac('00-16-3E-', true),
+            new Mac('08-00-27-', true),
+
+            new Mac('00-00-00-00-00-00-00-E0', false),
+        ],
+
         ///// PRIVATE METHODS /////
 
         parseConst: function(strVal) {
@@ -162,39 +188,73 @@ var Sifter = (function() {
             return null;
         },
 
-        findPrintDriver: function(driverName) {
-            for(var i = 0; i < internal.printDrivers.length; i++) {
-                var driver = internal.printDrivers[i];
-                if (driver.name.toUpperCase() === driverName.toUpperCase()
-                        || driverName.toUpperCase().indexOf(driver.name.toUpperCase()) > -1) {
-                    return driver;
+        match: {
+            printDriver: function(driverName) {
+                for(var i = 1; i < internal.printDrivers.length; i++) {
+                    var driver = internal.printDrivers[i];
+                    if (driver.name.toUpperCase() === driverName.toUpperCase()
+                            || driverName.toUpperCase().indexOf(driver.name.toUpperCase()) > -1) {
+                        return driver;
+                    }
                 }
+
+                return internal.printDrivers[0];
+            },
+
+            usbVendor: function(vendorId, productId) {
+                //TODO
+            },
+
+            addressScheme: function(address) {
+                var plainAddress = macCalls.plain(address);
+
+                for(var i = 1; i < internal.networkAdapters.length; i++) {
+                    var adapter = internal.networkAdapters[i];
+                    if (adapter.mac === plainAddress || plainAddress.indexOf(adapter.mac) == 0) {
+                        return adapter;
+                    }
+                }
+
+                return internal.networkAdapters[0];
             }
-
-            return internal.printDrivers[0];
-        },
-
-        findUsbVendor: function(vendorId, productId) {
-            //TODO
         },
 
         filter: {
-            //loop through matching drivers for every item still in the list and remove if it matches the filter (bit matching)
-            type: function(list, param, value) {
-                for(var i = list.length - 1; i >= 0; i--) {
-                    var item = list[i];
-                    var driver = internal.findPrintDriver(item.driver);
+            out: {
+                //true if found match's param equals the filter value (bit matching)
+                thisOne: function(match, param, value) {
+                    return (match && (match[param] == value || (match[param] & value) > 0));
+                },
 
-                    if (driver && (driver[param] == value || (driver[param] & value) > 0)) {
-                        list.splice(i, 1);
+                //loop through matching drivers for every item still in the list and remove matches
+                printers: function(list, param, value) {
+                    for(var i = list.length - 1; i >= 0; i--) {
+                        if (internal.filter.out.thisOne(internal.match.printDriver(list[i].driver), param, value)) {
+                            list.splice(i, 1);
+                        }
+                    }
+                },
+
+                usbs: function(list, param, value) {
+                    //TODO
+                },
+
+                addresses: function(list, param, value) {
+                    console.log(param, value);
+                    for(var i = list.length - 1; i >= 0; i--) {
+                        console.log(list[i], internal.match.addressScheme(list[i].mac));
+                        if (internal.filter.out.thisOne(internal.match.addressScheme(list[i].mac), param, value)) {
+                            list.splice(i, 1);
+                        }
                     }
                 }
             },
 
+
             //look for printer style filters
             printers: function(list, filter) {
-                if (filter.type !== undefined) { internal.filter.type(list, 'type', filter.type); }
-                if (filter.physical !== undefined) { internal.filter.type(list, 'physical', filter.physical); }
+                if (filter.type !== undefined) { internal.filter.out.printers(list, 'type', filter.type); }
+                if (filter.physical !== undefined) { internal.filter.out.printers(list, 'physical', filter.physical); }
                 if (filter.os !== undefined) {
                     if (typeof filter.os === 'boolean') {
                         var appVersion = '';
@@ -219,7 +279,7 @@ var Sifter = (function() {
                         }
                     }
 
-                    internal.filter.type(list, 'os', filter.os);
+                    internal.filter.out.printers(list, 'os', filter.os);
                 }
                 if (filter.name !== undefined) {
                     var regex = new RegExp(filter.name);
@@ -234,14 +294,20 @@ var Sifter = (function() {
             //look for usb style filters
             usb: function(list, filter) {
                 //TODO - name, type, vendor, product, device, endpoint
+            },
+
+            //look for address style filters
+            address: function(list, filter) {
+                if (filter.burnedIn !== undefined) { internal.filter.out.addresses(list, 'burnedIn', filter.burnedIn); }
+                if (filter.vmGuest !== undefined) { internal.filter.out.addresses(list, 'vmGuest', filter.vmGuest); }
             }
         }
 
     };
 
-    ///// PUBLIC DATA MAPPING /////
+///// PUBLIC DATA MAPPING /////
 
-    // TODO: jsDocs for the Sifter class
+// TODO: jsDocs for the Sifter class
     var sift = {
 
         /**
@@ -269,6 +335,8 @@ var Sifter = (function() {
                 internal.filter.printers(alter, filters);
             } else if (alter[0].vendor !== undefined) {
                 internal.filter.usb(alter, filters);
+            } else if (alter[0].mac !== undefined) {
+                internal.filter.address(alter, filters);
             } else {
                 throw new Error("Cannot determine list's element type");
             }
@@ -369,7 +437,45 @@ var Sifter = (function() {
                 scale.weight.value = scale.weight.toFixed(Math.abs(scale.precision.value));
 
                 return scale;
-            }
+            },
+
+            /**
+             * Parses MAC address to determine if it is burned in
+             *
+             * @param address
+             *
+             * @memberOf sift.parse
+             */
+            burnedMac: macCalls.burned
+        },
+
+        format: {
+            /**
+             * Formats plain MAC address to a readable form (ie. 00:00:00:00:00:00)
+             *
+             * @param address
+             *
+             * @memberOf sift.format
+             */
+            prettyMac: function(address) {
+                //call plain() to ensure consistent results regardless of address format passed
+                var clean = macCalls.plain(address);
+
+                if (clean === '') {
+                    return address; //if clean is empty, this is a bad address - just return what was passed
+                } else {
+                    return clean.match(/.{1,2}/g).join(':');
+                }
+            },
+
+            /**
+             * Formats MAC address to remove any special formatting
+             *
+             *  @param address
+             *
+             *  @memberOf sift.format
+             */
+            plainMac: macCalls.plain
         },
 
         /**
@@ -382,7 +488,7 @@ var Sifter = (function() {
         }
     };
 
-    //Setup constants
+//Setup constants
     Object.defineProperties(sift, {
         "Type": { value: Types },
         "OS": { value: OS }
