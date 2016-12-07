@@ -41,16 +41,15 @@ var Sifter = (function() {
 
     //mac address
     var macCalls = {
-        nonBurntAddressMasks: [
-            '00000000000000E0'
-        ],
+        nonBurnedAddressMasks: [], //populated by constructor calls
+
         burned: function(address) {
             if (!address) { return true; }
 
             var plain = macCalls.plain(address);
 
-            for(var i = 0; i < macCalls.nonBurntAddressMasks.length; i++) {
-                if (plain.indexOf(macCalls.nonBurntAddressMasks[i]) == 0) {
+            for(var i = 0; i < macCalls.nonBurnedAddressMasks.length; i++) {
+                if (plain.indexOf(macCalls.nonBurnedAddressMasks[i]) == 0) {
                     return false;
                 }
             }
@@ -64,8 +63,12 @@ var Sifter = (function() {
         }
     };
 
-    function Mac(address, isVM) {
+    function Mac(address, isVM, isBurnMask) {
         function _prop(val) { return { value: val, enumerable: true }; }
+
+        if (isBurnMask) {
+            macCalls.nonBurnedAddressMasks.push(address);
+        }
 
         Object.defineProperties(this, {
             "mac": _prop(macCalls.plain(address)),
@@ -158,23 +161,24 @@ var Sifter = (function() {
         networkAdapters: [
             new Mac('', false),
 
+            /** Burned-in masks need declared first for calculations on later addresses to succeed */
+            new Mac('00-00-00-00-00-00-00-E0', false, true),
+
             /** VMWare */
-            new Mac('00-50-56-', true),
-            new Mac('00-0C-29-', true),
-            new Mac('00-05-69-', true),
+            new Mac('00-50-56-', true, false),
+            new Mac('00-0C-29-', true, false),
+            new Mac('00-05-69-', true, false),
 
             /** Microsoft */
-            new Mac('00-03-FF-', true),
+            new Mac('00-03-FF-', true, false),
 
             /** Parallells */
-            new Mac('00-1C-42-', true),
+            new Mac('00-1C-42-', true, false),
 
             /** Xen, VBox */
-            new Mac('00-0F-4B-', true),
-            new Mac('00-16-3E-', true),
-            new Mac('08-00-27-', true),
-
-            new Mac('00-00-00-00-00-00-00-E0', false),
+            new Mac('00-0F-4B-', true, false),
+            new Mac('00-16-3E-', true, false),
+            new Mac('08-00-27-', true, false),
         ],
 
         ///// PRIVATE METHODS /////
