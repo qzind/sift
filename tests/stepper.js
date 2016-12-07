@@ -9,7 +9,7 @@ var Stepper = {
         display: function(o, type) {
             if (typeof(document) !== 'undefined') {
                 var element = document.createElement('pre');
-                element.innerHTML = type + ":  " + (typeof(o) !== 'string'? JSON.stringify(o):o);
+                element.innerHTML = (type? type + ":  ":"") + (typeof(o) !== 'string'? JSON.stringify(o):o);
                 document.body.appendChild(element);
             }
             switch(type) {
@@ -83,8 +83,28 @@ var Stepper = {
 
     /** Performs actual testing */
     tests: {
+        setup: function() {
+            sift.debug(true);
+
+            //temporary way of cleanly testing expected booleans along-side possible array contents
+            Boolean.prototype.indexOf = function(val) {
+                return (this === val? 1:-1);
+            };
+        },
+
+        teardown: function() {
+            sift.debug(false);
+
+            //remove our prototype changes
+            Boolean.prototype.indexOf = undefined;
+
+            Stepper.display.display('<hr/>');
+        },
+
         /** Test results on printer formatted lists */
         printer: function() {
+            Stepper.tests.setup();
+            Stepper.display.display('Starting Printer Tests');
 
             var testData = [
                 {
@@ -97,15 +117,8 @@ var Stepper = {
                 { name: 'Epson TM88 IV', driver: 'Generic / Text Only', details: { physical: true, type: 'raw', os: 'windows', named: false } },
                 { name: 'PDF', driver: 'CUPS-PDF.PPD', details: { physical: false, type: 'pixel', os: 'linux', named: true } }
             ];
-
-            sift.debug(true);
-
             Stepper.original = testData;
 
-            //temporary way of cleanly testing expected booleans along-side possible array contents
-            Boolean.prototype.indexOf = function(val) {
-                return (this === val? 1:-1);
-            };
 
             Stepper.checkStep('Remove Virtual File Printers', sift.toss(testData, { physical: false }), { tossed: { physical: false } });
             Stepper.checkStep('Keep Virtual File Printers', sift.keep(testData, { physical: false }), { kept: { physical: false } });
@@ -149,13 +162,47 @@ var Stepper = {
             Stepper.checkStep('Remove "PDF" Named Printers', sift.toss(testData, { name: "PDF" }), { tossed: { named: true } });
             Stepper.checkStep('Keep "PDF" Named Printers', sift.keep(testData, { name: "PDF" }), { kept: { named: true } });
 
-            //remove our prototype changes
-            Boolean.prototype.indexOf = undefined;
+
+            Stepper.tests.teardown();
         },
 
         /** Test results on usb formatted lists */
         usb: function() {
             //TODO
+        },
+
+        address: function() {
+            Stepper.tests.setup();
+            Stepper.display.display('Starting Address Tests');
+
+            var testData = [
+                {
+                    mac: '00505600FFFF',
+                    details: { burnedIn: false, vmGuest: true }
+                },
+                { mac: '00-16-3E-00-FF-FF', details: { burnedIn: false, vmGuest: true } },
+                { mac: '02C01DC0FFEE', details: { burnedIn: true, vmGuest: false } },
+                { mac: '4A:CC:E5:52:AB:ED', details: { burnedIn: true, vmGuest: false } },
+                { mac: '00-00-00-00-00-00-00-E0', details: { burnedIn: false, vmGuest: false } }
+            ];
+            Stepper.original = testData;
+
+
+            Stepper.checkStep('Remove Non-burned-in Addresses', sift.toss(testData, { burnedIn: false }), { tossed: { burnedIn: false } });
+            Stepper.checkStep('Keep Non-burned-in Addresses', sift.keep(testData, { burnedIn: false }), { kept: { burnedIn: false } });
+
+            Stepper.checkStep('Remove Burned-in Addresses', sift.toss(testData, { burnedIn: true }), { tossed: { burnedIn: true } });
+            Stepper.checkStep('Keep Burned-in Addresses', sift.keep(testData, { burnedIn: true }), { kept: { burnedIn: true } });
+
+
+            Stepper.checkStep('Remove VM Guest Addresses', sift.toss(testData, { vmGuest: true }), { tossed: { vmGuest: true } });
+            Stepper.checkStep('Keep VM Guest Addresses', sift.keep(testData, { vmGuest: true }), { kept: { vmGuest: true } });
+
+            Stepper.checkStep('Remove Non-VM Guest Addresses', sift.toss(testData, { vmGuest: false }), { tossed: { vmGuest: false } });
+            Stepper.checkStep('Keep Non-VM Guest Addresses', sift.keep(testData, { vmGuest: false }), { kept: { vmGuest: false } });
+
+
+            Stepper.tests.teardown();
         }
     }
 };
