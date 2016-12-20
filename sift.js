@@ -59,7 +59,7 @@ var Sifter = (function() {
         },
 
         plain: function(address) {
-            return address.replace(/[^A-Fa-f0-9]/g, "").toUpperCase();
+            return address ? address.replace(/[^A-Fa-f0-9]/g, "").toUpperCase() : address;
         }
     };
 
@@ -214,7 +214,7 @@ var Sifter = (function() {
 
                 for(var i = 1; i < internal.networkAdapters.length; i++) {
                     var adapter = internal.networkAdapters[i];
-                    if (adapter.mac === plainAddress || plainAddress.indexOf(adapter.mac) == 0) {
+                    if ((adapter.mac && adapter.mac === plainAddress) || (plainAddress && plainAddress.indexOf(adapter.mac) == 0)) {
                         return adapter;
                     }
                 }
@@ -339,7 +339,7 @@ var Sifter = (function() {
                 internal.filter.printers(alter, filters);
             } else if (alter[0].vendor !== undefined) {
                 internal.filter.usb(alter, filters);
-            } else if (alter[0].mac !== undefined) {
+            } else if (alter[0].primary !== undefined) {
                 internal.filter.address(alter, filters);
             } else {
                 throw new Error("Cannot determine list's element type");
