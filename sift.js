@@ -214,7 +214,7 @@ var Sifter = (function() {
 
                 for(var i = 1; i < internal.networkAdapters.length; i++) {
                     var adapter = internal.networkAdapters[i];
-                    if ((adapter.mac && adapter.mac === plainAddress) || (plainAddress && plainAddress.indexOf(adapter.mac) == 0)) {
+                    if (adapter.mac === plainAddress || (plainAddress && plainAddress.indexOf(adapter.mac) == 0)) {
                         return adapter;
                     }
                 }
