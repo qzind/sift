@@ -177,13 +177,14 @@ var Stepper = {
 
             var testData = [
                 {
-                    mac: '00505600FFFF',
+                    mac: '00505600FFFF', primary: false,
                     details: { burnedIn: false, vmGuest: true }
                 },
-                { mac: '00-16-3E-00-FF-FF', details: { burnedIn: false, vmGuest: true } },
-                { mac: '02C01DC0FFEE', details: { burnedIn: true, vmGuest: false } },
-                { mac: '4A:CC:E5:52:AB:ED', details: { burnedIn: true, vmGuest: false } },
-                { mac: '00-00-00-00-00-00-00-E0', details: { burnedIn: false, vmGuest: false } }
+                { mac: '00-16-3E-00-FF-FF', primary: false, details: { burnedIn: false, vmGuest: true } },
+                { mac: '02C01DC0FFEE', primary: false, details: { burnedIn: true, vmGuest: false } },
+                { mac: '4A:CC:E5:52:AB:ED', primary: false, details: { burnedIn: true, vmGuest: false } },
+                { mac: '00-00-00-00-00-00-00-E0', primary: false, details: { burnedIn: false, vmGuest: false } },
+                { mac: null, primary: false, details: { burnedIn: false, vmGuest: false } }
             ];
             Stepper.original = testData;
 

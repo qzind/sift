@@ -44,7 +44,8 @@ var Sifter = (function() {
         nonBurnedAddressMasks: [], //populated by constructor calls
 
         burned: function(address) {
-            if (!address) { return true; }
+            if (address === 'UNKNOWN') { return true; }
+            if (!address) { return false; }
 
             var plain = macCalls.plain(address);
 
@@ -59,7 +60,7 @@ var Sifter = (function() {
         },
 
         plain: function(address) {
-            return address ? address.replace(/[^A-Fa-f0-9]/g, "").toUpperCase() : address;
+            return (address || "").replace(/[^A-Fa-f0-9]/g, "").toUpperCase();
         }
     };
 
@@ -98,7 +99,7 @@ var Sifter = (function() {
     var internal = {
 
         printDrivers: [
-            new Driver('UNKNOWN', OS.ANY, Types.PIXEL, true),
+            new Driver('UNKNOWN', OS.ANY, Types.PIXEL, true), //Default
 
             /** Mac File Printers */
             new Driver('PDFwriter.PPD', OS.MAC, Types.PIXEL, false),
@@ -159,7 +160,9 @@ var Sifter = (function() {
         ],
 
         networkAdapters: [
-            new Mac('', false),
+            new Mac('UNKNOWN', false), //Default
+
+            new Mac(null, false),
 
             /** Burned-in masks need declared first for calculations on later addresses to succeed */
             new Mac('00-00-00-00-00-00-00-E0', false, true),
@@ -214,7 +217,7 @@ var Sifter = (function() {
 
                 for(var i = 1; i < internal.networkAdapters.length; i++) {
                     var adapter = internal.networkAdapters[i];
-                    if (adapter.mac === plainAddress || (plainAddress && plainAddress.indexOf(adapter.mac) == 0)) {
+                    if (adapter.mac === plainAddress || (adapter.mac && plainAddress.indexOf(adapter.mac) == 0)) {
                         return adapter;
                     }
                 }
@@ -244,9 +247,7 @@ var Sifter = (function() {
                 },
 
                 addresses: function(list, param, value) {
-                    console.log(param, value);
                     for(var i = list.length - 1; i >= 0; i--) {
-                        console.log(list[i], internal.match.addressScheme(list[i].mac));
                         if (internal.filter.out.thisOne(internal.match.addressScheme(list[i].mac), param, value)) {
                             list.splice(i, 1);
                         }
