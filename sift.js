@@ -153,6 +153,7 @@ var Sifter = (function() {
 
             /** USB/HID Scales */
             new Vendor('Mettler Toledo', 'scale', '0x0EB8', '0xF000', '0x00', '0x81'),
+            new Vendor('Fairbanks', 'scale', '0x0B67', '0x555E', '0x00', '0x81'),
             new Vendor('Dymo', 'scale', '0x0922', '0x8009', '0x00', '0x82'),
             new Vendor('Stamps.com', 'scale', '0x1446', '0x6A73', '0x00', '0x81'),
 
