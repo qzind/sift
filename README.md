@@ -62,9 +62,30 @@ Sift offers the ability to filter a supplied printer list based on an [internal 
    [ { name: 'Zebra LP2844 Raw', driver: 'Generic / Text Only' } ]
    ```
 
+## USB Data
+
+### USB Scale Parsing
+ * Sift can parse USB Data into weight, units, status in plain English text.
+
+ **Before**
+
+   ```js
+   var data = ['\x03', '\x02', '\x0C', '\xFE', '\x00', '\x00', '\x00', '\x00'];
+   ```
+
+   **Parse Data**
+   ```js
+   var weight = sift.parse.scale(data);
+   ```
+
+   **Parsed**
+   ```
+   "0.03lbs - Stable"
+   ```
+
 ---
 
-## USB Devices
+## USB Devices - Unfinished
 Sift can identify USB devices by `type` based on an [internal database](https://github.com/qzind/sift/blob/master/sift.js) of USB devices.  See also [USB Scale Parsing](#usb-scale-parsing)
 
 ### USB Prerequisites
@@ -94,27 +115,3 @@ Sift can identify USB devices by `type` based on an [internal database](https://
    ```
 
 ---
-
-## USB Data
-
-### USB Scale Parsing
- * Sift can parse USB Data into weight, units, status in plain English text.
-
- **Before**
-
-   ```js
-   var data = ['\x03', '\x02', '\x0C', '\xFE', '\x00', '\x00', '\x00', '\x00'];
-   ```
-
-   **Parse Data**
-   ```js
-   var weight = sift.parse.scale(data);
-   ```
-
-   **Parsed**
-   ```
-   "0.03lbs - Stable"
-   ```
-
-
-```
