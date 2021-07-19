@@ -435,7 +435,7 @@ var Sifter = (function() {
                         break;
                     case 12:
                     default:
-                        scale.units.value = 'lbs';
+                        scale.units.value = 'lb';
                 }
 
                 // Get weight
