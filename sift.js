@@ -442,7 +442,7 @@ var Sifter = (function() {
                 var wData = data.slice(4).reverse();
                 scale.weight.raw = parseInt(wData.join(''), 16);
                 scale.weight.value = scale.weight.raw * Math.pow(10, scale.precision.value);
-                scale.weight.value = scale.weight.toFixed(Math.abs(scale.precision.value));
+                scale.weight.value = scale.weight.value.toFixed(Math.abs(scale.precision.value));
 
                 return scale;
             },
