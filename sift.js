@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * @version 1.0.1
+ * @version 1.0.2
  * @overview Sift JavaScript Filter
  * <p/>
  * A JavaScript helper which filters hardware data for locally attached computer hardware.
@@ -391,6 +391,7 @@ var Sifter = (function() {
              */
             scale: function(data) {
                 var scale = {
+                    valid: true,
                     status: { raw: 0x00, value: '' },
                     precision: { raw: 0x00, value: 0 },
                     units: { raw: 0x00, value: '' },
@@ -403,6 +404,7 @@ var Sifter = (function() {
 
                 // Filter erroneous data
                 if (data.length < 4 || data.slice(2, 8).join('') === '000000000000') {
+                    scale.valid = false;
                     return scale;
                 }
 
@@ -433,14 +435,14 @@ var Sifter = (function() {
                         break;
                     case 12:
                     default:
-                        scale.units.value = 'lbs';
+                        scale.units.value = 'lb';
                 }
 
                 // Get weight
                 var wData = data.slice(4).reverse();
                 scale.weight.raw = parseInt(wData.join(''), 16);
-                scale.weight.value *= Math.pow(10, scale.precision.value);
-                scale.weight.value = scale.weight.toFixed(Math.abs(scale.precision.value));
+                scale.weight.value = scale.weight.raw * Math.pow(10, scale.precision.value);
+                scale.weight.value = scale.weight.value.toFixed(Math.abs(scale.precision.value));
 
                 return scale;
             },
