@@ -183,6 +183,9 @@ var Sifter = (function() {
             new Mac('00-0F-4B-', true, false),
             new Mac('00-16-3E-', true, false),
             new Mac('08-00-27-', true, false),
+            
+            /** Cisco */
+            new Mac('00-05-9A-', true, false),
         ],
 
         ///// PRIVATE METHODS /////
