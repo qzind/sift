@@ -175,8 +175,10 @@ var Sifter = (function() {
 
             /** Microsoft */
             new Mac('00-03-FF-', true, false),
+            /** Hyper-V */
+            new Mac('00-15-5D-', true, false),
 
-            /** Parallells */
+            /** Parallels */
             new Mac('00-1C-42-', true, false),
 
             /** Xen, VBox */
